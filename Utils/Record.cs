@@ -12,5 +12,15 @@ namespace CarDrivingDataManagement.Utils
         public Int32 TrueSize { get; set; }
         public byte[] ByteArray { get; set; }
         public Boolean Used { get; set; }
+
+        public Record() { }
+
+        public Record(byte[] bytes)
+        {
+            Size = bytes.Length;
+            TrueSize = Size;
+            ByteArray = bytes;
+            Used = true;
+        }
     }
 }

@@ -11,5 +11,10 @@ namespace CarDrivingDataManagement.Utils
         public Int32 Size { get; set; }
         public byte[] ByteArray { get; set; }
         public List<Record> Records { get; set; }
+
+        public Block()
+        {
+            Records = new List<Record>();
+        }
     }
 }
