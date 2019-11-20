@@ -6,3 +6,4 @@ C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataMana
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.csproj.GenerateResource.cache
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.exe
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.pdb
+C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.Form1.resources
