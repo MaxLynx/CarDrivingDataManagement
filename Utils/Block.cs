@@ -15,8 +15,9 @@ namespace CarDrivingDataManagement.Utils
         public byte[] ByteArray { get; set; }
         public Record<T>[] Records { get; set; }
 
-        public Block(int ID, int recordsCount)
+        public Block(int id, int recordsCount)
         {
+            ID = id;
             Records = new Record<T>[recordsCount];
         }
 
@@ -39,8 +40,6 @@ namespace CarDrivingDataManagement.Utils
                 }
                 int start = Size * ID;
                 int end = Size * (ID + 1) - 1;
-                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/block" + ID + ".txt",
-                                BitConverter.ToInt32(ByteArray, 4).ToString());
                 BinaryWriter binaryWriter = new BinaryWriter(File.OpenWrite(filename));
                 binaryWriter.Seek(start, SeekOrigin.Begin);
                 for (int i = 0; i <= ByteArray.Length; i++)
