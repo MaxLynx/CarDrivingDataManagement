@@ -64,7 +64,7 @@ namespace CarDrivingDataManagement.Utils
                             if (currentNode.Block.Records[i].CompareTo(searchParameter) < 0 &&
                                 (i + 1 == RecordsPerBlockCount ||
                                 currentNode.Block.Records[i + 1] == null ||
-                                i == RecordsPerBlockCount - 1 || currentNode.Block.Records[i + 1].CompareTo(searchParameter) > 0))
+                                currentNode.Block.Records[i + 1].CompareTo(searchParameter) > 0))
                             {
                                 currentNode = currentNode.Pointers[i + 1];
                                 break;
@@ -107,164 +107,139 @@ namespace CarDrivingDataManagement.Utils
                         for (int i = 1; i < RecordsPerBlockCount; i++)
                         {
                             if (currentNode.Block.Records[i] == null
-                                || currentNode.Block.Records[i].CompareTo(newData) < 0)
+                                || currentNode.Block.Records[i].CompareTo(newData) > 0)
                             {
                                 currentNode = currentNode.Pointers[i];
                                 break;
                             }
                         }
+                        if(currentNode.Block.Records[RecordsPerBlockCount - 1] != null &&
+                            currentNode.Block.Records[RecordsPerBlockCount - 1].CompareTo(newData) < 0)
+                        {
+                            currentNode = currentNode.Pointers[RecordsPerBlockCount];
+                        }
                     }
 
                 }
-                if (currentNode.Block.Records[RecordsPerBlockCount - 1] == null) //leaf overflow check
+                while (currentNode != null)
                 {
-                    int i = 0;
-                    while(currentNode.Block.Records[i] != null && currentNode.Block.Records[i].CompareTo(newData) < 0)
+                    if (currentNode.Block.Records[RecordsPerBlockCount - 1] == null) //leaf overflow check
                     {
-                        i++;
-                    }
-                    Record<T> tmp = currentNode.Block.Records[i];
-                    currentNode.Block.Records[i] = new Record<T>(newData);
-                    for (int j = i + 1; j < RecordsPerBlockCount; j++)
-                    {
-
-                        Record<T> tmp2 = currentNode.Block.Records[j];
-                        currentNode.Block.Records[j] = tmp;
-                        tmp = tmp2;
-                        if (tmp == null)
+                        int i = 0;
+                        while (currentNode.Block.Records[i] != null && currentNode.Block.Records[i].CompareTo(newData) < 0)
                         {
-                            break;
+                            i++;
+                        }
+                        Record<T> tmp = currentNode.Block.Records[i];
+                        currentNode.Block.Records[i] = new Record<T>(newData);
+                        for (int j = i + 1; j < RecordsPerBlockCount; j++)
+                        {
+
+                            Record<T> tmp2 = currentNode.Block.Records[j];
+                            currentNode.Block.Records[j] = tmp;
+                            tmp = tmp2;
+                            if (tmp == null)
+                            {
+                                break;
+                            }
+
+                        }
+                        WriteBlock(currentNode.Block);
+                        return true;
+
+                    }
+                    else //leaf overflow
+                    {
+                        List<Record<T>> records = new List<Record<T>>();
+                        List<TreeNode<T>> pointers = new List<TreeNode<T>>();
+
+                        int i = 0;
+                        while (i < RecordsPerBlockCount && currentNode.Block.Records[i].CompareTo(newData) < 0)
+                        {
+                            records.Add(currentNode.Block.Records[i]);
+                            pointers.Add(currentNode.Pointers[i + 1]);
+                            i++;
+                        }
+                        records.Add(new Record<T>(newData));
+                        pointers.Add(null);
+                        for (int j = i; j < RecordsPerBlockCount; j++)
+                        {
+                            records.Add(currentNode.Block.Records[j]);
+                            pointers.Add(currentNode.Pointers[j + 1]);
+                        }
+                        int medium = (RecordsPerBlockCount + 1) / 2 + (RecordsPerBlockCount + 1) % 2 - 1;
+
+                        TreeNode<T> newNode = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
+                        NextBlockID++;
+                        int k = 0;
+                        for (int j = medium + 1; j < RecordsPerBlockCount + 1; j++)
+                        {
+
+                            newNode.Block.Records[k] = records[j];
+                            newNode.Pointers[k + 1] = pointers[j];
+                            k++;
+
+                        }
+                        if (currentNode.Parent != null)
+                        {
+                            for (int j = 0; j < RecordsPerBlockCount + 1; j++)
+                            {
+                                if (currentNode.Parent.Pointers[j] == null)
+                                {
+                                    currentNode.Parent.Pointers[j] = newNode;
+                                    newNode.Parent = currentNode.Parent;
+                                    break;
+                                }
+                            }
+                        }
+                        for (int j = 0; j < medium; j++)
+                        {
+
+                            currentNode.Block.Records[j] = records[j];
+
+                        }
+                        newData = records[medium].Data;
+                        bool newRootCreated = false;
+                        if (currentNode.Parent == null)
+                        {
+                            Root = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
+                            NextBlockID++;
+                            Root.Block.Records[0] = new Record<T>(records[medium].Data);
+                            Root.Pointers[0] = currentNode;
+                            currentNode.Parent = Root;
+                            newNode.Parent = Root;
+                            Root.Pointers[1] = newNode;
+                            WriteBlock(Root.Block);
+                            newRootCreated = true;
+
                         }
 
-                    }
-                    WriteBlock(currentNode.Block);
-                    return true;
-
-                }
-                else //leaf overflow
-                {
-                    GrowTree(currentNode, newData);
-                    return true;
-                }
-            }
-        }
-
-        private void GrowTree(TreeNode<T> node, T newData)
-        {
-            List<Record<T>> records = new List<Record<T>>();
-            List<TreeNode<T>> pointers = new List<TreeNode<T>>();
-
-            int i = 0;
-            while(i < RecordsPerBlockCount && node.Block.Records[i].CompareTo(newData) < 0)
-            {
-                records.Add(node.Block.Records[i]);
-                pointers.Add(node.Pointers[i + 1]);
-                i++;
-            }
-            records.Add(new Record<T>(newData));
-            pointers.Add(null);
-            for (int j = i; j < RecordsPerBlockCount; j++)
-            {
-                records.Add(node.Block.Records[j]);
-                pointers.Add(node.Pointers[j + 1]);
-            }
-            int medium = (RecordsPerBlockCount + 1) / 2 + (RecordsPerBlockCount + 1) % 2 - 1;
-            
-            TreeNode<T> newNode = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
-            NextBlockID++;
-            int k = 0;
-            for (int j = medium + 1; j < RecordsPerBlockCount + 1; j++)
-            {
-                
-                newNode.Block.Records[k] = records[j];
-                newNode.Pointers[k+1] = pointers[j];
-                k++;
-                
-            }
-            if (node.Parent != null)
-            {
-                for (int j = 0; j < RecordsPerBlockCount + 1; j++)
-                {
-                    if (node.Parent.Pointers[j] == null)
-                    {
-                        node.Parent.Pointers[j] = newNode;
-                        newNode.Parent = node.Parent;
-                        break;
-                    }
-                }
-            }
-            for (int j = 0; j < medium; j++)
-            {
-
-                node.Block.Records[j] = records[j];
-
-            }
-
-            if (node.Parent != null)
-            {
-
-                AddToNode(records[medium].Data, node.Parent);
-            }
-            else
-            {
-                Root = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
-                NextBlockID++;
-                Root.Block.Records[0] = new Record<T>(records[medium].Data);
-                Root.Pointers[0] = node;
-                node.Parent = Root;
-                newNode.Parent = Root;
-                Root.Pointers[1] = newNode;
-                WriteBlock(Root.Block);
-                
-            }
-
-            for (i = 0; i < node.Block.Records.Length; i++)
-            {
-                if(node.Block.Records[i].CompareTo(records[medium].Data) >= 0)
-                {
-                    node.Block.Records[i] = null;
-                    node.Pointers[i + 1] = null;
-                }
-            }
-            WriteBlock(node.Block);
-            WriteBlock(newNode.Block);
-        }
-
-        public bool AddToNode(T newData, TreeNode<T> node)
-        {
-
-            if (node.Block.Records[RecordsPerBlockCount - 1] == null) //leaf overflow check
-            {
-                int i = 0;
-                while (node.Block.Records[i] != null && node.Block.Records[i].CompareTo(newData) < 0)
-                {
-                    i++;
-                }
-                Record<T> tmp = node.Block.Records[i];
-                node.Block.Records[i] = new Record<T>(newData);
-                for (int j = i + 1; j < RecordsPerBlockCount; j++)
-                {
-
-                    Record<T> tmp2 = node.Block.Records[j];
-                    node.Block.Records[j] = tmp;
-                    tmp = tmp2;
-                    if (tmp == null)
-                    {
-                        break;
+                        for (i = 0; i < currentNode.Block.Records.Length; i++)
+                        {
+                            if (currentNode.Block.Records[i].CompareTo(records[medium].Data) >= 0)
+                            {
+                                currentNode.Block.Records[i] = null;
+                                currentNode.Pointers[i + 1] = null;
+                            }
+                        }
+                        WriteBlock(currentNode.Block);
+                        WriteBlock(newNode.Block);
+                        currentNode = currentNode.Parent;
+                        if(newRootCreated)
+                        {
+                            currentNode = null;
+                        }
+                        
                     }
 
                 }
-                WriteBlock(node.Block);
-                return true;
-
-            }
-            else //leaf overflow
-            {
-                GrowTree(node, newData);
                 return true;
             }
 
         }
+
+        
+        
 
 
         private void WriteBlock(Block<T> block)
@@ -274,6 +249,7 @@ namespace CarDrivingDataManagement.Utils
 
         private bool IsLeaf(TreeNode<T> node)
         {
+            
             foreach(TreeNode<T> pointer in node.Pointers)
             {
                 if (pointer != null)
