@@ -21,6 +21,8 @@ namespace CarDrivingDataManagement.Utils
             Records = new Record<T>[recordsCount];
         }
 
+
+        
         public void WriteToFile(String filename)
         {
             if (Records[0] != null)
