@@ -11,7 +11,7 @@ namespace CarDrivingDataManagement.Utils
             where T : IRecordable<T>, IComparable<T>, new()
     {
         public Int32 ID { get; set; }
-        public static Int32 Size { get; set; }
+        public Int32 Size { get; set; }
         public byte[] ByteArray { get; set; }
         public Record<T>[] Records { get; set; }
 

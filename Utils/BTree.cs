@@ -13,6 +13,8 @@ namespace CarDrivingDataManagement.Utils
     {
         TreeNode<T> Root { get; set; }
 
+        public Int32 RootID { get; set; }
+
         TreeNode<T> FreeBlocksRoot { get; set; }
 
         String Filename { get; set; }
@@ -27,11 +29,11 @@ namespace CarDrivingDataManagement.Utils
         }
         public int GetBlockSize()
         {
-            return Root.Block.ByteArray.Length;
+            return Root.Block.Size;
         }
         public int GetRecordSize()
         {
-            return Root.Block.Records[0].Size;
+            return new T().GetBytes().Length;
         }
         public BTree() { }
 
@@ -39,14 +41,16 @@ namespace CarDrivingDataManagement.Utils
         {
             RecordsPerBlockCount = recordsPerBlockCount;
             Filename = filename;
-            NextBlockID = 0;
+            NextBlockID = 1;
         }
 
-        public BTree(int recordsPerBlockCount, String filename, int nextBlockID)
+        public BTree(int recordsPerBlockCount, String filename, int rootID, int nextBlockID)
         {
             RecordsPerBlockCount = recordsPerBlockCount;
             Filename = filename;
+            RootID = rootID;
             NextBlockID = nextBlockID;
+            Root = ReadBlock(RootID);
         }
 
         public Record<T> Find(T searchParameter)
@@ -57,7 +61,7 @@ namespace CarDrivingDataManagement.Utils
             }
             else
             {
-                TreeNode<T> currentNode = Root;
+                TreeNode<T> currentNode = ReadBlock(RootID);
                 while(currentNode != null)
                 {
                     for(int i = 0; i < RecordsPerBlockCount; i++)
@@ -77,7 +81,7 @@ namespace CarDrivingDataManagement.Utils
                             if (currentNode.Block.Records[i].CompareTo(searchParameter) > 0 &&
                                 (i == 0 || currentNode.Block.Records[i - 1].CompareTo(searchParameter) < 0))
                             {
-                                currentNode = currentNode.Pointers[i];
+                                currentNode = ReadBlock(currentNode.Pointers[i]);
                                 break;
                             }
                             if (currentNode.Block.Records[i].CompareTo(searchParameter) < 0 &&
@@ -85,7 +89,7 @@ namespace CarDrivingDataManagement.Utils
                                 currentNode.Block.Records[i + 1] == null ||
                                 currentNode.Block.Records[i + 1].CompareTo(searchParameter) > 0))
                             {
-                                currentNode = currentNode.Pointers[i + 1];
+                                currentNode = ReadBlock(currentNode.Pointers[i + 1]);
                                 break;
                             }
                         }
@@ -109,17 +113,18 @@ namespace CarDrivingDataManagement.Utils
                 Root = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
                 NextBlockID++;
                 Root.Block.Records[0] = new Record<T>(newData);
-                WriteBlock(Root.Block);
+                WriteBlock(Root);
+                RootID = Root.Block.ID;
                 return true;
             }
             else
             {
-                TreeNode<T> currentNode = Root;
+                TreeNode<T> currentNode = ReadBlock(RootID);
                 while (!IsLeaf(currentNode))
                 {
                     if (currentNode.Block.Records[0].CompareTo(newData) > 0)
                     {
-                        currentNode = currentNode.Pointers[0];
+                        currentNode = ReadBlock(currentNode.Pointers[0]);
                     }
                     else
                     {
@@ -129,7 +134,7 @@ namespace CarDrivingDataManagement.Utils
                             if (currentNode.Block.Records[i] == null
                                 || currentNode.Block.Records[i].CompareTo(newData) > 0)
                             {
-                                currentNode = currentNode.Pointers[i];
+                                currentNode = ReadBlock(currentNode.Pointers[i]);
                                 found = true;
                                 break;
                             }
@@ -139,42 +144,51 @@ namespace CarDrivingDataManagement.Utils
                             if (currentNode.Block.Records[RecordsPerBlockCount - 1] != null &&
                                 currentNode.Block.Records[RecordsPerBlockCount - 1].CompareTo(newData) < 0)
                             {
-                                currentNode = currentNode.Pointers[RecordsPerBlockCount];
+                                currentNode = ReadBlock(currentNode.Pointers[RecordsPerBlockCount]);
                             }
                         }
                     }
 
                 }
-                TreeNode<T> pointer1 = null;
-                TreeNode<T> pointer2 = null;
+                int pointer1 = 0;
+                int pointer2 = 0;
                 while (currentNode != null)
                 {
                     
                     if (currentNode.Block.Records[RecordsPerBlockCount - 1] == null) // overflow check
                     {
+                        
                         int i = 0;
                         while (currentNode.Block.Records[i] != null && currentNode.Block.Records[i].CompareTo(newData) < 0)
                         {
                             i++;
                         }
                         Record<T> tmp = currentNode.Block.Records[i];
-                        TreeNode<T> pointerTmp = currentNode.Pointers[i + 1];
+                        int pointerTmp = currentNode.Pointers[i + 1];
                         currentNode.Block.Records[i] = new Record<T>(newData);
+                        
                         currentNode.Pointers[i] = pointer1;
-                        if(pointer1 != null)
+                        if(pointer1 != 0)
                         {
-                            pointer1.Parent = currentNode;
+                            TreeNode<T> node = ReadBlock(pointer1);
+                            node.Parent = currentNode.Block.ID;
+                            WriteBlock(node);
                         }
-                        if (pointer2 != null)
+                        if (pointer2 != 0)
                         {
-                            pointer2.Parent = currentNode;
+                            TreeNode<T> node = ReadBlock(pointer2);
+                            node.Parent = currentNode.Block.ID;
+                            WriteBlock(node);
                         }
+                        
                         currentNode.Pointers[i + 1] = pointer2;
+
+                        
                         for (int j = i + 1; j < RecordsPerBlockCount; j++)
                         {
 
                             Record<T> tmp2 = currentNode.Block.Records[j];
-                            TreeNode<T> pointerTmp2 = currentNode.Pointers[j + 1];
+                            int pointerTmp2 = currentNode.Pointers[j + 1];
                             currentNode.Pointers[j + 1] = pointerTmp;
                             pointerTmp = pointerTmp2;
                             currentNode.Block.Records[j] = tmp;
@@ -185,14 +199,16 @@ namespace CarDrivingDataManagement.Utils
                             }
 
                         }
-                        WriteBlock(currentNode.Block);
+
+                        
+                        WriteBlock(currentNode);
                         return true;
 
                     }
                     else //overflow
                     {
                         List<Record<T>> records = new List<Record<T>>();
-                        List<TreeNode<T>> pointers = new List<TreeNode<T>>();
+                        List<Int32> pointers = new List<Int32>();
 
                         int i = 0;
                             while (i < RecordsPerBlockCount && currentNode.Block.Records[i].CompareTo(newData) < 0)
@@ -215,31 +231,35 @@ namespace CarDrivingDataManagement.Utils
                         NextBlockID++;
                         int k = 0;
                         newNode.Pointers[k] = pointers[medium+1];
-                        if (newNode.Pointers[k] != null)
+                        if (newNode.Pointers[k] != 0)
                         {
-                            newNode.Pointers[k].Parent = newNode;
+                            TreeNode<T> node = ReadBlock(newNode.Pointers[k]);
+                            node.Parent = newNode.Block.ID;
+                            WriteBlock(node);
                         }
                         for (int j = medium + 1; j < RecordsPerBlockCount + 1; j++)
                         {
 
                             newNode.Block.Records[k] = records[j];
                             newNode.Pointers[k+1] = pointers[j + 1];
-                            if (newNode.Pointers[k + 1] != null)
+                            if (newNode.Pointers[k + 1] != 0)
                             {
-                                newNode.Pointers[k + 1].Parent = newNode;
+                                TreeNode<T> node = ReadBlock(newNode.Pointers[k + 1]);
+                                node.Parent = newNode.Block.ID;
+                                WriteBlock(node);
                             }
                             k++;
 
                         }
-                        if (currentNode.Parent != null)
+                        if (currentNode.Parent != 0)
                         {
-                            pointer1 = currentNode;
-                            pointer2 = newNode;
+                            pointer1 = currentNode.Block.ID;
+                            pointer2 = newNode.Block.ID;
                         }
                         else
                         {
-                            pointer1 = null;
-                            pointer2 = null;
+                            pointer1 = 0;
+                            pointer2 = 0;
                         }
                         for (int j = 0; j < medium; j++)
                         {
@@ -249,23 +269,26 @@ namespace CarDrivingDataManagement.Utils
                         }
                         newData = records[medium].Data;
                         bool newRootCreated = false;
-                        if (currentNode.Parent == null)
+                        if (currentNode.Parent == 0)
                         {
                             Root = new TreeNode<T>(NextBlockID, RecordsPerBlockCount);
                             NextBlockID++;
                             Root.Block.Records[0] = new Record<T>(records[medium].Data);
-                            Root.Pointers[0] = currentNode;
-                            currentNode.Parent = Root;
-                            newNode.Parent = Root;
-                            Root.Pointers[1] = newNode;
-                            WriteBlock(Root.Block);
+                            Root.Pointers[0] = currentNode.Block.ID;
+                            currentNode.Parent = Root.Block.ID;
+                            newNode.Parent = Root.Block.ID;
+                            Root.Pointers[1] = newNode.Block.ID;
+                            WriteBlock(Root);
+                            RootID = Root.Block.ID;
                             newRootCreated = true;
 
                         }
                         currentNode.Pointers[0] = pointers[0];
-                        if (pointers[0] != null)
+                        if (pointers[0] != 0)
                         {
-                            pointers[0].Parent = currentNode;
+                            TreeNode<T> node = ReadBlock(pointers[0]);
+                            node.Parent = currentNode.Block.ID;
+                            WriteBlock(node);
                         }
                         for (i = 0; i < currentNode.Block.Records.Length; i++)
                         {
@@ -273,21 +296,23 @@ namespace CarDrivingDataManagement.Utils
                             {
                                 
                                 currentNode.Block.Records[i] = null;
-                                currentNode.Pointers[i + 1] = null;
+                                currentNode.Pointers[i + 1] = 0;
                                 
                             }
                             else
                             {
                                 currentNode.Pointers[i + 1] = pointers[i + 1];
-                                if (pointers[i + 1] != null)
+                                if (pointers[i + 1] != 0)
                                 {
-                                    pointers[i + 1].Parent = currentNode;
+                                    TreeNode<T> node = ReadBlock(pointers[i+1]);
+                                    node.Parent = currentNode.Block.ID;
+                                    WriteBlock(node);
                                 }
                             }
                         }
-                        WriteBlock(currentNode.Block);
-                        WriteBlock(newNode.Block);
-                        currentNode = currentNode.Parent;
+                        WriteBlock(currentNode);
+                        WriteBlock(newNode);
+                        currentNode = ReadBlock(currentNode.Parent);
                         if(newRootCreated)
                         {
                             currentNode = null;
@@ -305,18 +330,51 @@ namespace CarDrivingDataManagement.Utils
         
 
 
-        private void WriteBlock(Block<T> block)
+        private void WriteBlock(TreeNode<T> node)
         {
-            block.WriteToFile(Filename);
+            node.WriteToFile(Filename, Root.Block.Records[0].Size);
         }
 
-        
+        public TreeNode<T> ReadBlock(int id)
+        {
+            if(id == 0)
+            {
+                return null;
+            }
+            int blockSize = 4 + GetRecordSize() * RecordsPerBlockCount
+                + 4 * (RecordsPerBlockCount + 1) + 4;
+            TreeNode<T> node = new TreeNode<T>(id, RecordsPerBlockCount);
+            BinaryReader binaryReader =
+                new BinaryReader(File.Open(Filename,
+                FileMode.Open));
+            binaryReader.BaseStream.Seek(blockSize * id, SeekOrigin.Begin);
+            byte[] bytes = binaryReader.ReadBytes(blockSize);
+            node.Parent = BitConverter.ToInt32(bytes.Skip(4).Take(4).ToArray(), 0);
+            for (int i = 1; i <= RecordsPerBlockCount + 1; i++)
+            {
+                node.Pointers[i - 1] = BitConverter.ToInt32(bytes.Skip(4 + 4*i).Take(4).ToArray(), 0);
+            }
+            for(int i = 0; i < RecordsPerBlockCount; i++)
+            {
+                node.Block.Records[i] =
+                    new Record<T>(bytes.Skip(4 + 4 + 4 * (RecordsPerBlockCount + 1) + i * GetRecordSize()
+                    ).Take(GetRecordSize()).ToArray());
+                if (node.Block.Records[i].Data.IsNull())
+                {
+                    node.Block.Records[i] = null;
+                }
+            }
+            binaryReader.Dispose();
+            return node;
+        }
+
+
         private bool IsLeaf(TreeNode<T> node)
         {
             
-            foreach(TreeNode<T> pointer in node.Pointers)
+            foreach(int pointer in node.Pointers)
             {
-                if (pointer != null)
+                if (pointer != 0)
                     return false;
             }
             return true;
@@ -326,21 +384,21 @@ namespace CarDrivingDataManagement.Utils
         {
             String result = "";
             Queue<TreeNode<T>> queue = new Queue<TreeNode<T>>();
-            TreeNode<T> currentNode = Root;
+            TreeNode<T> currentNode = ReadBlock(RootID);
 
             int currentLevelNodesCount = 1;
             int nextLevelNodesCount = 0;
 
-            queue.Enqueue(Root);
+            queue.Enqueue(currentNode);
             while (queue.Count > 0)
             {
                 for (int i = 0; i < currentLevelNodesCount; i++)
                 {
                     currentNode = queue.Dequeue();
                     result += "Block " + currentNode.Block.ID;
-                    if (currentNode.Parent != null)
+                    if (currentNode.Parent != 0)
                     {
-                        result += "(Parent: " + currentNode.Parent.Block.ID + ")\r\n";
+                        result += "(Parent: " + currentNode.Parent + ")\r\n";
                     }
                     else
                     {
@@ -358,11 +416,11 @@ namespace CarDrivingDataManagement.Utils
                         }
                     }
                     result += "References: ";
-                    foreach (TreeNode<T> pointer in currentNode.Pointers)
+                    foreach (int pointer in currentNode.Pointers)
                     {
-                        if (pointer != null)
+                        if (pointer != 0)
                         {
-                            result += pointer.Block.ID + "; ";
+                            result += pointer + "; ";
                         }
                         else
                         {
@@ -370,12 +428,12 @@ namespace CarDrivingDataManagement.Utils
                         }
                     }
                     result += "\r\n***\r\n";
-                    foreach(TreeNode<T> pointer in currentNode.Pointers)
+                    foreach(int pointer in currentNode.Pointers)
                     {
-                        if(pointer != null)
+                        if(pointer != 0)
                         {
                             nextLevelNodesCount++;
-                            queue.Enqueue(pointer);
+                            queue.Enqueue(ReadBlock(pointer));
                         }
                     }
                     

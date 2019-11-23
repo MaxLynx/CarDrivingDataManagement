@@ -11,5 +11,7 @@ namespace CarDrivingDataManagement.Utils
         byte[] GetBytes();
 
         T newInstance(byte[] bytes);
+
+        bool IsNull();
     }
 }
