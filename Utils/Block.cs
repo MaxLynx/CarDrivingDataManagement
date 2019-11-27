@@ -10,50 +10,93 @@ namespace CarDrivingDataManagement.Utils
     public class Block<T>
             where T : IRecordable<T>, IComparable<T>, new()
     {
-        public Int32 ID { get; set; }
-        public Int32 Size { get; set; }
-        public byte[] ByteArray { get; set; }
-        public Record<T>[] Records { get; set; }
+        public RecordsArray<T> RecordsArray { get; set; }
 
-        public Block(int id, int recordsCount)
+        public Int32[] Pointers { get; set; }
+
+        public Int32 Parent { get; set; }
+
+        public Block(int blockID, int recordsPerBlockCount)
         {
-            ID = id;
-            Records = new Record<T>[recordsCount];
+            RecordsArray = new RecordsArray<T>(blockID, recordsPerBlockCount);
+            Pointers = new Int32[recordsPerBlockCount + 1];
         }
 
-
-        
-        public void WriteToFile(String filename)
+        public void WriteToFile(BinaryWriter binaryWriter, int recordSize)
         {
-            if (Records[0] != null)
+            File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/called.txt", "Called");
+            if (RecordsArray.Records[0] != null)
             {
-                Size = Records[0].ByteArray.Length * Records.Length;
-                ByteArray = new byte[Size];
-                for (int i = 0; i < Records.Length; i++)
+                RecordsArray.Size = 4 + recordSize * RecordsArray.Records.Length + 4 * Pointers.Length + 4;
+                RecordsArray.ByteArray = new byte[recordSize * RecordsArray.Records.Length];
+                int start = RecordsArray.Size * RecordsArray.ID;
+                int end = RecordsArray.Size * (RecordsArray.ID + 1) - 1;
+                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/start.txt", ""+start);
+                binaryWriter.Seek(start, SeekOrigin.Begin);
+
+                // Block ID
+                byte[] bytes = new byte[4];
+                byte[] idBytes = BitConverter.GetBytes(RecordsArray.ID);
+                for (int i = 0; i < idBytes.Length; i++)
                 {
-                    if (Records[i] == null)
+                    bytes[i] = idBytes[i];
+                }
+                foreach (byte _byte in bytes)
+                {
+                    binaryWriter.Write(_byte);
+                }
+
+                // Parent ID
+                bytes = new byte[4];
+                idBytes = BitConverter.GetBytes(Parent);
+                for (int i = 0; i < idBytes.Length; i++)
+                {
+                    bytes[i] = idBytes[i];
+                }
+                foreach (byte _byte in bytes)
+                {
+                    binaryWriter.Write(_byte);
+                }
+
+                // Pointers
+                foreach (int pointer in Pointers)
+                {
+                    bytes = new byte[4];
+                    idBytes = BitConverter.GetBytes(pointer);
+                    for (int i = 0; i < idBytes.Length; i++)
+                    {
+                        bytes[i] = idBytes[i];
+                    }
+                    foreach (byte _byte in bytes)
+                    {
+                        binaryWriter.Write(_byte);
+                    }
+                }
+
+                // Records
+                for (int i = 0; i < RecordsArray.Records.Length; i++)
+                {
+                    if (RecordsArray.Records[i] == null)
                     {
                         break;
                     }
-                    for (int j = 0; j < Records[i].ByteArray.Length; j++)
+                    for (int j = 0; j < RecordsArray.Records[i].ByteArray.Length; j++)
                     {
-                        ByteArray[i * Records[i].ByteArray.Length + j] = Records[i].ByteArray[j];
+                        RecordsArray.ByteArray[i * RecordsArray.Records[i].ByteArray.Length + j] = RecordsArray.Records[i].ByteArray[j];
                     }
                 }
-                int start = Size * ID;
-                int end = Size * (ID + 1) - 1;
-                BinaryWriter binaryWriter = new BinaryWriter(File.OpenWrite(filename));
-                binaryWriter.Seek(start, SeekOrigin.Begin);
-                for (int i = 0; i <= ByteArray.Length; i++)
+                
+                for (int i = 0; i < RecordsArray.ByteArray.Length; i++)
                 {
                     if (start + i > end)
                     {
                         break;
                     }
-                    binaryWriter.Write(ByteArray[i]);
+                    binaryWriter.Write(RecordsArray.ByteArray[i]);
                 }
-                binaryWriter.Dispose();
+                binaryWriter.Flush();
             }
+            
         }
     }
 }

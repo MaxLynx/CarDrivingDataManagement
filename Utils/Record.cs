@@ -16,7 +16,7 @@ namespace CarDrivingDataManagement.Utils
 
         public T Data { get; set; }
 
-        public Block<T> Block { get; set; }
+        public RecordsArray<T> Block { get; set; }
 
         public Record() { }
 
