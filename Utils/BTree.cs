@@ -36,7 +36,7 @@ namespace CarDrivingDataManagement.Utils
         }
         public int GetRecordSize()
         {
-            return new T().GetBytes().Length;
+            return new Record<T>(new T()).Size;
         }
         public BTree() { }
 
@@ -104,17 +104,126 @@ namespace CarDrivingDataManagement.Utils
             }
         }
 
-        public void Delete(T data)
+        public bool Delete(T data)
         {
             Block<T> currentBlock = Find(data);
             if(currentBlock == null)
             {
-                return;
+                return false;
             }
             else
             {
-                //different situations
+                while (currentBlock != null)
+                {
+                    if (IsLeaf(currentBlock) &&
+                    currentBlock.Pointers[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != 0) //minimal accepted records count
+                    {
+                        foreach (Record<T> record in currentBlock.RecordsArray.Records)
+                        {
+                            if (record.Data.CompareTo(data) == 0)
+                            {
+                                record.Used = false;
+                                WriteBlock(currentBlock);
+                                return true;
+                            }
+                        }
+                    }
+                    else
+                    if (!IsLeaf(currentBlock))
+                    {
+                        for (int i = 0; i < RecordsPerBlockCount; i++)
+                        {
+                            Record<T> record = currentBlock.RecordsArray.Records[i];
+                            if (record.Data.CompareTo(data) == 0)
+                            {
+                                Block<T> successor = ReadBlock(currentBlock.Pointers[i + 1]); //could it also be a left son?
+                                while (!IsLeaf(successor))
+                                {
+                                    successor = ReadBlock(currentBlock.Pointers[0]);
+                                }
+                                currentBlock.RecordsArray.Records[i] = successor.RecordsArray.Records[0];
+                                WriteBlock(currentBlock);
+                                currentBlock = successor;
+                                data = successor.RecordsArray.Records[0].Data;
+                            }
+                        }
+                    }
+                    else
+                    if (IsLeaf(currentBlock) &&
+                    currentBlock.Pointers[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] == 0)
+                    {
+                        Block<T> parent = ReadBlock(currentBlock.Parent);
+                        int i = 0;
+                        for (i = 0; i < RecordsPerBlockCount; i++)
+                        {
+                            if (i == currentBlock.RecordsArray.ID)
+                            {
+                                break;
+                            }
+                        }
+                        Block<T> left = ReadBlock(parent.Pointers[i]);
+                        Block<T> right = null;
+                        if (i + 1 <= RecordsPerBlockCount)
+                        {
+                            right = ReadBlock(parent.Pointers[i + 1]);
+                        }
+                        if (i + 1 <= RecordsPerBlockCount && parent.Pointers[i + 1] != 0
+                            && right.Pointers[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != 0)
+                        {
+                            for (int j = 0; j < RecordsPerBlockCount; j++)
+                            {
+                                if (currentBlock.RecordsArray.Records[j].Data.CompareTo(data) == 0)
+                                {
+                                    currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
+                                }
+                            }
+                            WriteBlock(currentBlock);
+                            parent.RecordsArray.Records[i] = right.RecordsArray.Records[0];
+                            WriteBlock(parent);
+                            currentBlock = right;
+                            data = right.RecordsArray.Records[0].Data;
+                        }
+                        else
+                            if (parent.Pointers[i] != 0
+                            && left.Pointers[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != 0)
+                        {
+                            for (int j = 0; j < RecordsPerBlockCount; j++)
+                            {
+                                if (currentBlock.RecordsArray.Records[j].Data.CompareTo(data) == 0)
+                                {
+                                    currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
+                                }
+                            }
+                            WriteBlock(currentBlock);
+                            parent.RecordsArray.Records[i] = left.RecordsArray.Records[0];
+                            WriteBlock(parent);
+                            currentBlock = left;
+                            data = left.RecordsArray.Records[0].Data;
+                        }
+                        else
+                        {
+                            int start = (int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2);
+                            
+                                left.RecordsArray.Records[start] = parent.RecordsArray.Records[i];
+                                int k = 0;
+                                for (int j = start + 1; j < RecordsPerBlockCount; j++)
+                                {
+                                    left.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[k];
+                                    k++;
+                                }
+                                WriteBlock(left);
+                                for(int j = i; j < RecordsPerBlockCount - 1; j++)
+                                {
+                                    parent.RecordsArray.Records[j] = parent.RecordsArray.Records[j + 1];
+                                    parent.Pointers[j] = parent.Pointers[j + 1];
+                                }
+                                WriteBlock(parent);
+                            //cyclic movement to the root
+                        }
+                    }
+                }
             }
+            return false;
         }
 
         public bool Contains(T searchParameter)
@@ -375,7 +484,7 @@ namespace CarDrivingDataManagement.Utils
                 node.RecordsArray.Records[i] =
                     new Record<T>(bytes.Skip(4 + 4 + 4 * (RecordsPerBlockCount + 1) + i * GetRecordSize()
                     ).Take(GetRecordSize()).ToArray());
-                if (node.RecordsArray.Records[i].Data.IsNull())
+                if (node.RecordsArray.Records[i].Data.IsNull() || !node.RecordsArray.Records[i].Used)
                 {
                     node.RecordsArray.Records[i] = null;
                 }

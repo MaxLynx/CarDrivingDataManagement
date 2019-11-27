@@ -24,14 +24,13 @@ namespace CarDrivingDataManagement.Utils
 
         public void WriteToFile(BinaryWriter binaryWriter, int recordSize)
         {
-            File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/called.txt", "Called");
             if (RecordsArray.Records[0] != null)
             {
+                
                 RecordsArray.Size = 4 + recordSize * RecordsArray.Records.Length + 4 * Pointers.Length + 4;
                 RecordsArray.ByteArray = new byte[recordSize * RecordsArray.Records.Length];
                 int start = RecordsArray.Size * RecordsArray.ID;
                 int end = RecordsArray.Size * (RecordsArray.ID + 1) - 1;
-                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/start.txt", ""+start);
                 binaryWriter.Seek(start, SeekOrigin.Begin);
 
                 // Block ID
@@ -72,7 +71,7 @@ namespace CarDrivingDataManagement.Utils
                         binaryWriter.Write(_byte);
                     }
                 }
-
+                
                 // Records
                 for (int i = 0; i < RecordsArray.Records.Length; i++)
                 {
@@ -80,9 +79,9 @@ namespace CarDrivingDataManagement.Utils
                     {
                         break;
                     }
-                    for (int j = 0; j < RecordsArray.Records[i].ByteArray.Length; j++)
+                    for (int j = 0; j < RecordsArray.Records[i].Size; j++)
                     {
-                        RecordsArray.ByteArray[i * RecordsArray.Records[i].ByteArray.Length + j] = RecordsArray.Records[i].ByteArray[j];
+                        RecordsArray.ByteArray[i * RecordsArray.Records[i].Size + j] = RecordsArray.Records[i].ByteArray[j];
                     }
                 }
                 

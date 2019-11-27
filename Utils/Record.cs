@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,15 +23,28 @@ namespace CarDrivingDataManagement.Utils
 
         public Record(byte[] bytes)
         {
+            
             ByteArray = bytes;
             Size = ByteArray.Length;
-            Data = new T().newInstance(ByteArray);
+            if (BitConverter.ToInt32(ByteArray.Take(4).ToArray(), 0) == 1)
+            {
+                Used = true;
+            }
+            else
+            {
+                Used = false;
+            }
+            Data = new T().newInstance(ByteArray.Skip(4).Take(Size-4).ToArray());
+            
         }
 
         public Record(T data)
         {
             Data = data;
-            ByteArray = data.GetBytes();
+            byte[] dataBytes = data.GetBytes();
+            ByteArray = new byte[4 + dataBytes.Length];
+            System.Buffer.BlockCopy(BitConverter.GetBytes(1), 0, ByteArray, 0, 4);
+            System.Buffer.BlockCopy(dataBytes, 0, ByteArray, 4, dataBytes.Length); // record is used
             Size = ByteArray.Length;
             Used = true;
         }
