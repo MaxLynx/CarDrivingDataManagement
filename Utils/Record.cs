@@ -13,7 +13,19 @@ namespace CarDrivingDataManagement.Utils
     {
         public Int32 Size { get; set; }
         public byte[] ByteArray { get; set; }
-        public Boolean Used { get; set; }
+        private bool used;
+        public Boolean Used {
+            get { return used; }
+            set 
+            { 
+                used = value;
+                if(used)
+                    System.Buffer.BlockCopy(BitConverter.GetBytes(1), 0, ByteArray, 0, 4);
+                else
+                    System.Buffer.BlockCopy(BitConverter.GetBytes(0), 0, ByteArray, 0, 4);
+            }
+        }
+
 
         public T Data { get; set; }
 
