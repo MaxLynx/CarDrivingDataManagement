@@ -15,7 +15,10 @@ namespace CarDrivingDataManagement.Utils
 
         public Int32 RootID { get; set; }
 
-        Block<T> FreeBlocksRoot { get; set; }
+        public Int32 FreeBlocksRoot { get; set; }
+
+        public Int32 FreeBlocksEnd { get; set; }
+
 
         String Filename { get; set; }
 
@@ -30,7 +33,7 @@ namespace CarDrivingDataManagement.Utils
         {
             return NextBlockID;
         }
-        public int GetBlockSize()
+        public int GetBlockSize() //min is 20 bytes
         {
             return Root.RecordsArray.Size;
         }
@@ -45,16 +48,21 @@ namespace CarDrivingDataManagement.Utils
             RecordsPerBlockCount = recordsPerBlockCount;
             Filename = filename;
             NextBlockID = 1;
+            FreeBlocksRoot = 0;
+            FreeBlocksEnd = 0;
             OpenFileInteraction();
         }
 
-        public BTree(int recordsPerBlockCount, String filename, int rootID, int nextBlockID)
+        public BTree(String filename)
         {
-            RecordsPerBlockCount = recordsPerBlockCount;
             Filename = filename;
-            RootID = rootID;
-            NextBlockID = nextBlockID;
             OpenFileInteraction();
+            BinaryReader.BaseStream.Seek(0, SeekOrigin.Begin);
+            RecordsPerBlockCount = BitConverter.ToInt32(BinaryReader.ReadBytes(4), 0);
+            RootID = BitConverter.ToInt32(BinaryReader.ReadBytes(4), 0);
+            NextBlockID = BitConverter.ToInt32(BinaryReader.ReadBytes(4), 0);
+            FreeBlocksRoot = BitConverter.ToInt32(BinaryReader.ReadBytes(4), 0);
+            FreeBlocksEnd = BitConverter.ToInt32(BinaryReader.ReadBytes(4), 0);
             Root = ReadBlock(RootID);
         }
 
@@ -113,34 +121,62 @@ namespace CarDrivingDataManagement.Utils
             }
             else
             {
+                /*
+                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "" + currentBlock.RecordsArray.ID + "\r\n");*/
                 while (currentBlock != null)
                 {
                     if (IsLeaf(currentBlock) &&
-                    currentBlock.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != null) //minimal accepted records count
+                    currentBlock.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)-1] != null) //minimal accepted records count
                     {
-                        foreach (Record<T> record in currentBlock.RecordsArray.Records)
+                        /*File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "First case" + "\r\n");*/
+                        bool done = false;
+                        for (int i = 0; i < RecordsPerBlockCount; i++)
                         {
-                            if (record.Data.CompareTo(data) == 0)
+                            
+                            Record<T> record = currentBlock.RecordsArray.Records[i];
+                            if (!done && record.Data.CompareTo(data) == 0)
                             {
+                               /* File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "Record found in its block at position " + i + "\r\n");*/
                                 record.Used = false;
-                                WriteBlock(currentBlock);
-                                return true;
+                                done = true;
+                            }
+                            else
+                                if (done)
+                            {
+                                currentBlock.RecordsArray.Records[i - 1] = record;
                             }
                         }
+                        WriteBlock(currentBlock);
+                        return true;
+
                     }
                     else
                     if (!IsLeaf(currentBlock))
                     {
+                        return false; //TODO
+
+                        File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "Second case" + "\r\n");
                         for (int i = 0; i < RecordsPerBlockCount; i++)
                         {
+                            
                             Record<T> record = currentBlock.RecordsArray.Records[i];
                             if (record.Data.CompareTo(data) == 0)
                             {
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "Record found in its block at position " + i + "\r\n");
                                 Block<T> successor = ReadBlock(currentBlock.Pointers[i + 1]); //could it also be a left son?
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "First successor candidate: " + successor.RecordsArray.ID + "\r\n");
                                 while (!IsLeaf(successor))
                                 {
-                                    successor = ReadBlock(currentBlock.Pointers[0]);
+                                    successor = ReadBlock(successor.Pointers[0]);
                                 }
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "Successor found: " + successor.RecordsArray.ID + "\r\n");
                                 currentBlock.RecordsArray.Records[i] = successor.RecordsArray.Records[0];
                                 WriteBlock(currentBlock);
                                 currentBlock = successor;
@@ -151,12 +187,19 @@ namespace CarDrivingDataManagement.Utils
                     }
                     else
                     if (IsLeaf(currentBlock) &&
-                    currentBlock.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] == null)
+                    currentBlock.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)-1] == null)
                     {
+                        return false; //TODO
+                        File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    "The hardest case" + "\r\n");
+
                         Block<T> parent = ReadBlock(currentBlock.Parent);
+                        
                         bool firstTime = true;
+                        int extraPointer = 0;
                         while (parent != null)
                         {
+                            
                             int i = 0;
                             for (i = 0; i < RecordsPerBlockCount; i++)
                             {
@@ -165,35 +208,75 @@ namespace CarDrivingDataManagement.Utils
                                     break;
                                 }
                             }
-                            
+                            File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                    i + "th pointer of block " + parent.RecordsArray.ID + " points to " + parent.Pointers[i] + "\r\n");
                             Block<T> left = null;
-                            if (i != 0)
+                            if (i != 0 && parent.Pointers[i - 1] != 0)
                             {
                                 left = ReadBlock(parent.Pointers[i - 1]);
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "left neighbour: " + parent.Pointers[i - 1] + "\r\n");
                             }
                             Block<T> right = null;
-                            if (i + 1 <= RecordsPerBlockCount)
+                            if (i + 1 <= RecordsPerBlockCount && parent.Pointers[i + 1] != 0)
                             {
                                 right = ReadBlock(parent.Pointers[i + 1]);
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "right neighbour: " + parent.Pointers[i + 1] + "\r\n");
                             }
                             if (i + 1 <= RecordsPerBlockCount && parent.Pointers[i + 1] != 0
-                                && right.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != null)
+                                && right.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)-1] != null)
                             {
-                                for (int j = 0; j < RecordsPerBlockCount; j++)
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "Taking element from the left neighbour\r\n");
+                                bool found = false;
+                                for (int j = 0; j < RecordsPerBlockCount - 1; j++)
                                 {
-                                    if (firstTime)
+                                    if (!found && firstTime)
                                     {
                                         if (currentBlock.RecordsArray.Records[j].Data.CompareTo(data) == 0)
                                         {
-                                            currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
-                                            break;
+                                            found = true;
+                                            if (currentBlock.RecordsArray.Records[j + 1] != null)
+                                            {
+                                                currentBlock.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[j + 1];
+
+                                            }
+                                            else
+                                            {
+                                                currentBlock.RecordsArray.Records[j] =
+                                                    parent.RecordsArray.Records[i];
+                                            }
                                         }
+                                    }
+                                    else
+                                    if (found && firstTime)
+                                    {
+                                        if (currentBlock.RecordsArray.Records[j + 1] != null)
+                                        {
+                                            currentBlock.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[j + 1];
+
+                                        }
+                                        else
+                                        {
+                                            currentBlock.RecordsArray.Records[j] =
+                                                parent.RecordsArray.Records[i];
+                                        }
+                                        
                                     }
                                     else
                                     {
                                         if (currentBlock.RecordsArray.Records[j] == null)
                                         {
                                             currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
+                                            while (j > 0 && currentBlock.RecordsArray.Records[j].Data.
+                                                CompareTo(currentBlock.RecordsArray.Records[j - 1].Data) < 0)
+                                            {
+                                                Record<T> tmp = currentBlock.RecordsArray.Records[j];
+                                                currentBlock.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[j - 1];
+                                                currentBlock.RecordsArray.Records[j - 1] = tmp;
+                                            }
+
                                             break;
                                         }
 
@@ -202,52 +285,74 @@ namespace CarDrivingDataManagement.Utils
                                 WriteBlock(currentBlock);
                                 parent.RecordsArray.Records[i] = right.RecordsArray.Records[0];
                                 WriteBlock(parent);
-                                currentBlock = right;
-                                data = right.RecordsArray.Records[0].Data;
+                                currentBlock = null;
+                                for(i = 0; i < RecordsPerBlockCount - 1; i++)
+                                {
+                                    right.RecordsArray.Records[i] = right.RecordsArray.Records[i + 1];
+                                }
+                                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/treeAfterHardDeletion.txt",
+                    TraceLevelOrder());
+                                return true;
                             }
                             else
-                                if (parent.Pointers[i] != 0
-                                && left.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != null)
+                                if (i != 0
+                                && left.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)-1] != null)
                             {
-                                for (int j = 0; j < RecordsPerBlockCount; j++)
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "Taking element from the left neighbour\r\n");
+                                bool found = false;
+                                for (int j = RecordsPerBlockCount - 1; j > 0; j--)
                                 {
-                                    if (firstTime)
+                                    
+                                    if (!found && firstTime)
                                     {
-                                        if (currentBlock.RecordsArray.Records[j].Data.CompareTo(data) == 0)
+                                        if (currentBlock.RecordsArray.Records[j] != null &&
+                                            currentBlock.RecordsArray.Records[j].Data.CompareTo(data) == 0)
                                         {
-                                            currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
-                                            break;
+                                            found = true;
+                                            currentBlock.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[j - 1];
+
+                                            
                                         }
                                     }
                                     else
+                                    if (found && firstTime)
                                     {
-                                        if (currentBlock.RecordsArray.Records[j] == null)
-                                        {
-                                            currentBlock.RecordsArray.Records[j] = parent.RecordsArray.Records[i];
-                                            break;
-                                        }
+                                        currentBlock.RecordsArray.Records[j] = currentBlock.RecordsArray.Records[j - 1];
 
                                     }
+                                    
                                 }
+                                currentBlock.RecordsArray.Records[0] = parent.RecordsArray.Records[i];
                                 WriteBlock(currentBlock);
                                 parent.RecordsArray.Records[i] = left.RecordsArray.Records[0];
                                 WriteBlock(parent);
-                                currentBlock = left;
-                                data = left.RecordsArray.Records[0].Data;
+                                currentBlock = null;
+                                for (i = 0; i < RecordsPerBlockCount - 1; i++)
+                                {
+                                    left.RecordsArray.Records[i] = left.RecordsArray.Records[i + 1];
+                                }
+                                File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/treeAfterHardDeletion.txt",
+                    TraceLevelOrder());
+                                return true;
                             }
                             else
                             {
-                                int start = (int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2);
+                                int start = (int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2) - 1;
 
 
                                 Block<T> onlyOneStaysAliveNode = null;
+                                Block<T> freeBlock = null;
                                 if (left != null)
                                 {
-                                    if(parent.RecordsArray.ID == RootID)
+                                    File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "Moving all to the left block\r\n");
+                                    if (parent.RecordsArray.ID == RootID)
                                     {
                                         RootID = left.RecordsArray.ID;
                                     }
                                     onlyOneStaysAliveNode = left;
+                                    freeBlock = currentBlock;
                                     onlyOneStaysAliveNode.RecordsArray.Records[start] = parent.RecordsArray.Records[i];
                                     int k = 0;
                                     for (int j = start + 1; j < RecordsPerBlockCount; j++)
@@ -263,15 +368,20 @@ namespace CarDrivingDataManagement.Utils
                                         parent.RecordsArray.Records[j] = parent.RecordsArray.Records[j + 1];
                                         parent.Pointers[j] = parent.Pointers[j + 1];
                                     }
+                                    
                                 }
                                 else
                                 {
+                                    File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "Moving all to the right block\r\n");
                                     if (parent.RecordsArray.ID == RootID)
                                     {
                                         RootID = right.RecordsArray.ID;
                                     }
                                     
                                     onlyOneStaysAliveNode = right;
+                                    freeBlock = currentBlock;
+
                                     List<Record<T>> tmpRecords = new List<Record<T>>();
                                     for (int j = 0; j < start; j++)
                                     {
@@ -300,16 +410,46 @@ namespace CarDrivingDataManagement.Utils
                                         parent.Pointers[j] = parent.Pointers[j + 1];
                                     }
                                 }
+                                File.AppendAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/deletion.txt",
+                       "Free block: " + freeBlock.RecordsArray.ID + "\r\n");
+                                if (FreeBlocksEnd == 0)
+                                {
+                                    FreeBlocksRoot = freeBlock.RecordsArray.ID;
+                                    FreeBlocksEnd = freeBlock.RecordsArray.ID;
+
+                                    for (int j = 0; j <= RecordsPerBlockCount; j++)
+                                    {
+                                        freeBlock.Pointers[j] = 0;
+                                    }
+                                }
+                                else
+                                {
+                                    Block<T> freeBlocksEnd = ReadBlock(FreeBlocksEnd);
+                                    FreeBlocksEnd = freeBlock.RecordsArray.ID;
+                                    freeBlocksEnd.Pointers[0] = FreeBlocksEnd;
+                                    WriteBlock(freeBlocksEnd);
+                                }
+                                foreach (Record<T> record in freeBlock.RecordsArray.Records)
+                                {
+                                    if (record != null)
+                                    {
+                                        record.Used = false;
+                                    }
+                                }
+                                WriteBlock(freeBlock);
                                 WriteBlock(onlyOneStaysAliveNode);
 
                                 WriteBlock(parent);
 
-                                if (parent.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2)] != null)
+                                if (parent.RecordsArray.Records[(int)Math.Ceiling((RecordsPerBlockCount + 1) * 1.0 / 2) - 1] != null)
                                 {
-                                    currentBlock = null;
+                                    File.WriteAllText("C:/Users/User/source/repos/CarDrivingDataManagementTest/treeAfterHardDeletion.txt",
+                    TraceLevelOrder());
+                                    return true;
                                 }
                                 else
                                 {
+                                    extraPointer = currentBlock.RecordsArray.ID;
                                     currentBlock = parent;
                                     parent = ReadBlock(parent.Parent);
                                     firstTime = false;
@@ -334,8 +474,24 @@ namespace CarDrivingDataManagement.Utils
                 return false;
             if(Root == null)
             {
-                Root = new Block<T>(NextBlockID, RecordsPerBlockCount);
-                NextBlockID++;
+                if (FreeBlocksRoot == 0)
+                {
+                    Root = new Block<T>(NextBlockID, RecordsPerBlockCount);
+                    NextBlockID++;
+                }
+                else
+                {
+                    Root = new Block<T>(FreeBlocksRoot, RecordsPerBlockCount);
+                    if (FreeBlocksRoot != FreeBlocksEnd)
+                    {
+                        FreeBlocksRoot = ReadBlock(FreeBlocksRoot).Pointers[0];
+                    }
+                    else
+                    {
+                        FreeBlocksRoot = 0;
+                        FreeBlocksEnd = 0;
+                    }
+                }
                 Root.RecordsArray.Records[0] = new Record<T>(newData);
                 WriteBlock(Root);
                 RootID = Root.RecordsArray.ID;
@@ -451,8 +607,25 @@ namespace CarDrivingDataManagement.Utils
                         }
                         int medium = (RecordsPerBlockCount + 1) / 2 + (RecordsPerBlockCount + 1) % 2 - 1;
 
-                        Block<T> newNode = new Block<T>(NextBlockID, RecordsPerBlockCount);
-                        NextBlockID++;
+                        Block<T> newNode = null;
+                        if (FreeBlocksRoot == 0)
+                        {
+                            newNode = new Block<T>(NextBlockID, RecordsPerBlockCount);
+                            NextBlockID++;
+                        }
+                        else
+                        {
+                            newNode = new Block<T>(FreeBlocksRoot, RecordsPerBlockCount);
+                            if (FreeBlocksRoot != FreeBlocksEnd)
+                            {
+                                FreeBlocksRoot = ReadBlock(FreeBlocksRoot).Pointers[0];
+                            }
+                            else
+                            {
+                                FreeBlocksRoot = 0;
+                                FreeBlocksEnd = 0;
+                            }
+                        }
                         int k = 0;
                         newNode.Pointers[k] = pointers[medium+1];
                         if (newNode.Pointers[k] != 0)
@@ -495,8 +668,24 @@ namespace CarDrivingDataManagement.Utils
                         bool newRootCreated = false;
                         if (currentNode.Parent == 0)
                         {
-                            Root = new Block<T>(NextBlockID, RecordsPerBlockCount);
-                            NextBlockID++;
+                            if (FreeBlocksRoot == 0)
+                            {
+                                Root = new Block<T>(NextBlockID, RecordsPerBlockCount);
+                                NextBlockID++;
+                            }
+                            else
+                            {
+                                Root = new Block<T>(FreeBlocksRoot, RecordsPerBlockCount);
+                                if (FreeBlocksRoot != FreeBlocksEnd)
+                                {
+                                    FreeBlocksRoot = ReadBlock(FreeBlocksRoot).Pointers[0];
+                                }
+                                else
+                                {
+                                    FreeBlocksRoot = 0;
+                                    FreeBlocksEnd = 0;
+                                }
+                            }
                             Root.RecordsArray.Records[0] = new Record<T>(records[medium].Data);
                             Root.Pointers[0] = currentNode.RecordsArray.ID;
                             currentNode.Parent = Root.RecordsArray.ID;
@@ -605,74 +794,78 @@ namespace CarDrivingDataManagement.Utils
         {
             String result = "";
             Queue<Block<T>> queue = new Queue<Block<T>>();
-            Block<T> currentNode = ReadBlock(RootID);
 
-            int currentLevelNodesCount = 1;
-            int nextLevelNodesCount = 0;
-
-            queue.Enqueue(currentNode);
-            while (queue.Count > 0)
+            if (RootID != 0)
             {
-                for (int i = 0; i < currentLevelNodesCount; i++)
+
+                Block<T> currentNode = ReadBlock(RootID);
+
+                int currentLevelNodesCount = 1;
+                int nextLevelNodesCount = 0;
+
+                queue.Enqueue(currentNode);
+                while (queue.Count > 0)
                 {
-                    currentNode = queue.Dequeue();
-                    result += "Block " + currentNode.RecordsArray.ID;
-                    if (currentNode.Parent != 0)
+                    for (int i = 0; i < currentLevelNodesCount; i++)
                     {
-                        result += "(Parent: " + currentNode.Parent + ")\r\n";
-                    }
-                    else
-                    {
-                        result += "(Parent: null)\r\n";
-                    }
-                    foreach (Record<T> record in currentNode.RecordsArray.Records)
-                    {
-                        if (record != null)
+                        currentNode = queue.Dequeue();
+                        result += "Block " + currentNode.RecordsArray.ID;
+                        if (currentNode.Parent != 0)
                         {
-                            result += record.Data + " [";
-                            if (record.Used)
+                            result += "(Parent: " + currentNode.Parent + ")\r\n";
+                        }
+                        else
+                        {
+                            result += "(Parent: null)\r\n";
+                        }
+                        foreach (Record<T> record in currentNode.RecordsArray.Records)
+                        {
+                            if (record != null)
                             {
-                                result += "USED]\r\n";
+                                result += record.Data + " [";
+                                if (record.Used)
+                                {
+                                    result += "USED]\r\n";
+                                }
+                                else
+                                {
+                                    result += "NOT USED]\r\n";
+                                }
                             }
                             else
                             {
-                                result += "NOT USED]\r\n";
+                                result += "null\r\n";
                             }
                         }
-                        else
+                        result += "References: ";
+                        foreach (int pointer in currentNode.Pointers)
                         {
-                            result += "null\r\n";
+                            if (pointer != 0)
+                            {
+                                result += pointer + "; ";
+                            }
+                            else
+                            {
+                                result += "null; ";
+                            }
                         }
+                        result += "\r\n***\r\n";
+                        foreach (int pointer in currentNode.Pointers)
+                        {
+                            if (pointer != 0)
+                            {
+                                nextLevelNodesCount++;
+                                queue.Enqueue(ReadBlock(pointer));
+                            }
+                        }
+
                     }
-                    result += "References: ";
-                    foreach (int pointer in currentNode.Pointers)
-                    {
-                        if (pointer != 0)
-                        {
-                            result += pointer + "; ";
-                        }
-                        else
-                        {
-                            result += "null; ";
-                        }
-                    }
-                    result += "\r\n***\r\n";
-                    foreach(int pointer in currentNode.Pointers)
-                    {
-                        if(pointer != 0)
-                        {
-                            nextLevelNodesCount++;
-                            queue.Enqueue(ReadBlock(pointer));
-                        }
-                    }
-                    
+
+                    result += "LEVEL END\r\n";
+                    currentLevelNodesCount = nextLevelNodesCount;
+                    nextLevelNodesCount = 0;
                 }
-
-                result += "LEVEL END\r\n";
-                currentLevelNodesCount = nextLevelNodesCount;
-                nextLevelNodesCount = 0;
             }
-
             return result;
         }
         public void OpenFileInteraction()
@@ -684,6 +877,14 @@ namespace CarDrivingDataManagement.Utils
         }
         public void CloseFileInteraction()
         {
+            BinaryWriter.Seek(0, SeekOrigin.Begin);
+            BinaryWriter.Write(BitConverter.GetBytes(RecordsPerBlockCount));
+            BinaryWriter.Write(BitConverter.GetBytes(RootID));
+            BinaryWriter.Write(BitConverter.GetBytes(NextBlockID));
+            BinaryWriter.Write(BitConverter.GetBytes(FreeBlocksRoot));
+            BinaryWriter.Write(BitConverter.GetBytes(FreeBlocksEnd));
+            BinaryWriter.Flush();
+
             BinaryReader.Dispose();
             BinaryWriter.Dispose();
         }
