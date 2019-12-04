@@ -61,12 +61,22 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CarController.cs" />
+    <Compile Include="DriverController.cs" />
+    <Compile Include="Entity\AddressedID.cs" />
     <Compile Include="Entity\Driver.cs" />
     <Compile Include="Entity\Vehicle.cs" />
-    <Compile Include="Form1.cs">
+    <Compile Include="Utils\HeapFile.cs" />
+    <Compile Include="View\CarOperationsForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1.Designer.cs">
+    <Compile Include="View\CarOperationsForm.Designer.cs">
+      <DependentUpon>CarOperationsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
@@ -76,7 +86,28 @@
     <Compile Include="Utils\IRecordable.cs" />
     <Compile Include="Utils\Record.cs" />
     <Compile Include="Utils\Block.cs" />
-    <EmbeddedResource Include="Form1.resx">
+    <Compile Include="View\Form2.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\Form2.Designer.cs">
+      <DependentUpon>Form2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\OperationsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\OperationsForm.Designer.cs">
+      <DependentUpon>OperationsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\StartForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="View\StartForm.Designer.cs">
+      <DependentUpon>StartForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="View\CarOperationsForm.resx">
+      <DependentUpon>CarOperationsForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="View\Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -88,6 +119,15 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="View\Form2.resx">
+      <DependentUpon>Form2.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="View\OperationsForm.resx">
+      <DependentUpon>OperationsForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="View\StartForm.resx">
+      <DependentUpon>StartForm.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

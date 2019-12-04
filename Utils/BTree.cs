@@ -470,8 +470,7 @@ namespace CarDrivingDataManagement.Utils
 
         public bool Add(T newData)
         {
-            if (Contains(newData))
-                return false;
+            
             if(Root == null)
             {
                 if (FreeBlocksRoot == 0)
@@ -508,6 +507,10 @@ namespace CarDrivingDataManagement.Utils
                     }
                     else
                     {
+                        if(currentNode.RecordsArray.Records[0].CompareTo(newData) == 0)
+                        {
+                            return false;
+                        }
                         bool found = false;
                         for (int i = 1; i < RecordsPerBlockCount; i++)
                         {
@@ -517,6 +520,14 @@ namespace CarDrivingDataManagement.Utils
                                 currentNode = ReadBlock(currentNode.Pointers[i]);
                                 found = true;
                                 break;
+                            }
+                            else
+                            {
+                                if(currentNode.RecordsArray.Records[i] != null
+                                && currentNode.RecordsArray.Records[i].CompareTo(newData) == 0)
+                                {
+                                    return false;
+                                }
                             }
                         }
                         if (!found)
@@ -532,6 +543,7 @@ namespace CarDrivingDataManagement.Utils
                 }
                 int pointer1 = 0;
                 int pointer2 = 0;
+                bool firstTime = true;
                 while (currentNode != null)
                 {
                     
@@ -543,6 +555,13 @@ namespace CarDrivingDataManagement.Utils
                         {
                             i++;
                         }
+                        if(firstTime && currentNode.RecordsArray.Records[i] != null
+                            &&
+                            currentNode.RecordsArray.Records[i].CompareTo(newData) == 0)
+                        {
+                            return false;
+                        }
+                        firstTime = false;
                         Record<T> tmp = currentNode.RecordsArray.Records[i];
                         int pointerTmp = currentNode.Pointers[i + 1];
                         currentNode.RecordsArray.Records[i] = new Record<T>(newData);
@@ -597,6 +616,10 @@ namespace CarDrivingDataManagement.Utils
                                 pointers.Add(currentNode.Pointers[i]);
                                 i++;
                             }
+                        if (i < RecordsPerBlockCount && currentNode.RecordsArray.Records[i].CompareTo(newData) == 0)
+                        {
+                            return false;
+                        }
                         pointers.Add(pointer1);
                         records.Add(new Record<T>(newData));
                         pointers.Add(pointer2);
@@ -743,7 +766,7 @@ namespace CarDrivingDataManagement.Utils
         
 
 
-        private void WriteBlock(Block<T> node)
+        public void WriteBlock(Block<T> node)
         {
             node.WriteToFile(BinaryWriter, Root.RecordsArray.Records[0].Size);
         }
@@ -887,6 +910,84 @@ namespace CarDrivingDataManagement.Utils
 
             BinaryReader.Dispose();
             BinaryWriter.Dispose();
+        }
+
+        public String DescribeFileStructure()
+        {
+            String result = "";
+            BinaryReader.BaseStream.Seek(0, SeekOrigin.Begin);
+
+            int blockSize = GetBlockSize();
+            int recordSize = GetRecordSize();
+
+            for (int i = 0; i < GetBlocksCount(); i++)
+            {
+                result += "\r\nBlock " + i + "\r\n";
+                for (int k = 0; k < 4; k++)
+                {
+                    BinaryReader.ReadByte();
+                }
+                byte[] parentID = new byte[4];
+
+                for (int k = 0; k < 4; k++)
+                {
+                    try
+                    {
+                        parentID[k] = BinaryReader.ReadByte();
+                    }
+                    catch (Exception)
+                    {
+                        parentID[k] = 0;
+                    }
+                }
+
+                result += "Parent block: " + BitConverter.ToInt32(parentID, 0) + "\r\n";
+
+                result += "Pointers: ";
+                for (int m = 0; m < RecordsPerBlockCount + 1; m++)
+                {
+                    byte[] ptrID = new byte[4];
+                    for (int k = 0; k < 4; k++)
+                    {
+                        try
+                        {
+                            ptrID[k] = BinaryReader.ReadByte();
+                        }
+                        catch (Exception)
+                        {
+                            ptrID[k] = 0;
+                        }
+                    }
+                    result += BitConverter.ToInt32(ptrID, 0) + ";";
+                }
+                result += "\r\n";
+                for (int k = 0; k < RecordsPerBlockCount; k++)
+                {
+                    byte[] instance = new byte[recordSize];
+                    String record = "null";
+                    try
+                    {
+                        for (int j = 0; j < recordSize; j++)
+                        {
+
+                            instance[j] = BinaryReader.ReadByte();
+                        }
+                        Record<T> recordObj = new Record<T>(instance);
+                        record = recordObj.Data.ToString() + " [USED: " + recordObj.Used + "]";
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    result += "Record " + (k + 1) + ": ";
+                    result += record + "\r\n";
+
+                }
+
+            }
+
+            return result;
         }
 
     }
