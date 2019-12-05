@@ -14,7 +14,12 @@ namespace CarDrivingDataManagement.Entity
         public Int32 IDMaxLength { get; set; }
         public Int32 Address { get; set; }
 
-        public AddressedID() { }
+        public AddressedID() 
+        {
+            ID = "Placeholder123456";
+            IDMaxLength = ID.Length;
+            IDActualLength = ID.Length;
+        }
         public AddressedID(String id, int idMaxLength, int address)
         {
             ID = id;

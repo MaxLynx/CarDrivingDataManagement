@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,6 +31,7 @@ namespace CarDrivingDataManagement
 
         private void button2_Click(object sender, EventArgs e)
         {
+            File.WriteAllText(textBox2.Text, "");
             new OperationsForm(true, textBox2.Text, Int32.Parse(textBox3.Text)).Show();
         }
 

@@ -35,19 +35,20 @@ namespace CarDrivingDataManagement.Utils
 
         public Record(byte[] bytes)
         {
-            
-            ByteArray = bytes;
-            Size = ByteArray.Length;
-            if (BitConverter.ToInt32(ByteArray.Take(4).ToArray(), 0) == 1)
+            if (bytes.Length != 0)
             {
-                Used = true;
+                ByteArray = bytes;
+                Size = ByteArray.Length;
+                if (BitConverter.ToInt32(ByteArray.Take(4).ToArray(), 0) == 1)
+                {
+                    Used = true;
+                }
+                else
+                {
+                    Used = false;
+                }
+                Data = new T().newInstance(ByteArray.Skip(4).Take(Size - 4).ToArray());
             }
-            else
-            {
-                Used = false;
-            }
-            Data = new T().newInstance(ByteArray.Skip(4).Take(Size-4).ToArray());
-            
         }
 
         public Record(T data)

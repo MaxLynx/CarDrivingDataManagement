@@ -11,14 +11,7 @@
         /// Clean up any resources being used.
         /// </summary>
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
+        
 
         #region Windows Form Designer generated code
 
@@ -62,6 +55,7 @@
             this.button2.TabIndex = 14;
             this.button2.Text = "SHOW DATABASE STRUCTURE";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // textBox1
             // 
@@ -72,6 +66,7 @@
             this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBox1.Size = new System.Drawing.Size(746, 112);
             this.textBox1.TabIndex = 15;
+            this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // button1
             // 
@@ -82,6 +77,7 @@
             this.button1.TabIndex = 16;
             this.button1.Text = "GENERATE";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // label7
             // 
@@ -250,6 +246,7 @@
             this.button5.TabIndex = 39;
             this.button5.Text = "UPDATE";
             this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.button5_Click);
             // 
             // button3
             // 
@@ -260,6 +257,7 @@
             this.button3.TabIndex = 38;
             this.button3.Text = "CREATE";
             this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.button3_Click);
             // 
             // button4
             // 
@@ -270,6 +268,7 @@
             this.button4.TabIndex = 40;
             this.button4.Text = "SEARCH";
             this.button4.UseVisualStyleBackColor = true;
+            this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
             // button6
             // 
@@ -280,6 +279,7 @@
             this.button6.TabIndex = 41;
             this.button6.Text = "SEARCH";
             this.button6.UseVisualStyleBackColor = true;
+            this.button6.Click += new System.EventHandler(this.button6_Click);
             // 
             // CarOperationsForm
             // 
@@ -312,6 +312,7 @@
             this.Controls.Add(this.button2);
             this.Name = "CarOperationsForm";
             this.Text = "Car Driving Data Management";
+            this.Load += new System.EventHandler(this.CarOperationsForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

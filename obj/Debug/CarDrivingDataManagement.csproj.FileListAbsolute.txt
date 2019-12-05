@@ -9,3 +9,5 @@ C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataMana
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.Form1.resources
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.View.OperationsForm.resources
 C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.View.StartForm.resources
+C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.View.CarOperationsForm.resources
+C:\Users\User\source\repos\CarDrivingDataManagement\obj\Debug\CarDrivingDataManagement.View.Form2.resources

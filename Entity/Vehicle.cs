@@ -24,6 +24,10 @@ namespace CarDrivingDataManagement.Entity
         public Vehicle() {
             IDMaxLength = 7;
             VINMaxLength = 17;
+            ID = "ID??";
+            IDActualLength = ID.Length;
+            VIN = "VIN??";
+            VINActualLength = VIN.Length;
         }
 
         public Vehicle(String id, String vin, int repairingsCount, int driveWeight, bool searched,
@@ -123,33 +127,33 @@ namespace CarDrivingDataManagement.Entity
         public Vehicle newInstance(byte[] bytes)
         {
 
-            byte[] idStr = bytes.Skip(4).Take(IDMaxLength).ToArray();
-            byte[] actualIDStrLengthBytes = bytes.Skip(4 + IDMaxLength).Take(4).ToArray();
+            byte[] idStr = bytes.Take(IDMaxLength).ToArray();
+            byte[] actualIDStrLengthBytes = bytes.Skip(IDMaxLength).Take(4).ToArray();
 
 
-            byte[] vinStr = bytes.Skip(4 + IDMaxLength + 4 + 4).Take(VINMaxLength).ToArray();
-            byte[] actualVINStrLengthBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength).Take(4).ToArray();
+            byte[] vinStr = bytes.Skip(IDMaxLength + 4).Take(VINMaxLength).ToArray();
+            byte[] actualVINStrLengthBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength).Take(4).ToArray();
 
-            byte[] repairingsCountBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength + 4
+            byte[] repairingsCountBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength + 4
                 ).Take(4).ToArray();
 
-            byte[] driveWeightBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength + 4 + 4
+            byte[] driveWeightBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength + 4 + 4
                 ).Take(4).ToArray();
 
-            byte[] searchedBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength + 4 + 4 + 4
+            byte[] searchedBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength + 4 + 4 + 4
                 ).Take(1).ToArray();
 
-            byte[] stkEndDateBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength + 4 + 4 + 4 + 1
+            byte[] stkEndDateBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength + 4 + 4 + 4 + 1
                 ).Take(8).ToArray();
 
-            byte[] ekEndDateBytes = bytes.Skip(4 + IDMaxLength + 4 + 4 + VINMaxLength + 4 + 4 + 4 + 1 + 8
+            byte[] ekEndDateBytes = bytes.Skip(IDMaxLength + 4 + VINMaxLength + 4 + 4 + 4 + 1 + 8
                ).Take(8).ToArray();
 
             Vehicle obj = new Vehicle(
                 Encoding.ASCII.GetString(idStr, 0, BitConverter.ToInt32(actualIDStrLengthBytes, 0)),
                 Encoding.ASCII.GetString(vinStr, 0, BitConverter.ToInt32(actualVINStrLengthBytes, 0)),
                 BitConverter.ToInt32(repairingsCountBytes, 0),
-                BitConverter.ToInt32(driveWeightBytes, 0),
+                BitConverter.ToInt32(driveWeightBytes, 0), 
                 BitConverter.ToBoolean(searchedBytes, 0),
                 new DateTime(BitConverter.ToInt64(stkEndDateBytes, 0)),
                 new DateTime(BitConverter.ToInt64(ekEndDateBytes, 0))

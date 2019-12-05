@@ -170,6 +170,7 @@
             this.button1.TabIndex = 13;
             this.button1.Text = "CONNECT";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // button2
             // 
@@ -180,6 +181,7 @@
             this.button2.TabIndex = 20;
             this.button2.Text = "CREATE";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // textBox4
             // 
@@ -263,7 +265,7 @@
             this.textBox7.Name = "textBox7";
             this.textBox7.Size = new System.Drawing.Size(104, 41);
             this.textBox7.TabIndex = 22;
-            this.textBox7.Text = "10";
+            this.textBox7.Text = "40";
             // 
             // textBox8
             // 
@@ -273,7 +275,7 @@
             this.textBox8.Name = "textBox8";
             this.textBox8.Size = new System.Drawing.Size(104, 41);
             this.textBox8.TabIndex = 24;
-            this.textBox8.Text = "10";
+            this.textBox8.Text = "40";
             // 
             // label12
             // 

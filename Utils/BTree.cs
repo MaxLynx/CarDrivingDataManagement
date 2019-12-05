@@ -793,7 +793,8 @@ namespace CarDrivingDataManagement.Utils
                 node.RecordsArray.Records[i] =
                     new Record<T>(bytes.Skip(4 + 4 + 4 * (RecordsPerBlockCount + 1) + i * GetRecordSize()
                     ).Take(GetRecordSize()).ToArray());
-                if (node.RecordsArray.Records[i].Data.IsNull() || !node.RecordsArray.Records[i].Used)
+                if (node.RecordsArray.Records[i].Data == null ||
+                    node.RecordsArray.Records[i].Data.IsNull() || !node.RecordsArray.Records[i].Used)
                 {
                     node.RecordsArray.Records[i] = null;
                 }

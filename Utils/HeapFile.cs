@@ -20,7 +20,7 @@ namespace CarDrivingDataManagement.Utils
         
         public int GetBlockSize() //min is 20 bytes
         {
-            return ReadBlock(0).RecordsArray.Size;
+            return ReadBlock(1).RecordsArray.Size;
         }
         public int GetRecordSize()
         {
@@ -50,21 +50,21 @@ namespace CarDrivingDataManagement.Utils
         public int Add(T data)
         {
             Block<T> currentBlock = ReadBlock(NextBlockID - 1);
-            if(currentBlock == null)
+            if (currentBlock == null) 
             {
-                currentBlock = new Block<T>(1, RecordsPerBlockCount);
+                currentBlock = new Block<T>(NextBlockID - 1, RecordsPerBlockCount);
                 currentBlock.RecordsArray.Records[0] = new Record<T>(data);
                 WriteBlock(currentBlock);
-                return 1;
+                return (NextBlockID - 1) * RecordsPerBlockCount;
             }
             else
-                if(currentBlock.RecordsArray.Records[RecordsPerBlockCount-1] != null)
+            if(currentBlock.RecordsArray.Records[RecordsPerBlockCount-1] != null)
             {
-                currentBlock = new Block<T>(NextBlockID-1, RecordsPerBlockCount);
+                currentBlock = new Block<T>(NextBlockID, RecordsPerBlockCount);
                 NextBlockID++;
                 currentBlock.RecordsArray.Records[0] = new Record<T>(data);
                 WriteBlock(currentBlock);
-                return (NextBlockID - 2) * RecordsPerBlockCount;
+                return (NextBlockID - 1) * RecordsPerBlockCount;
             }
             else
             {
@@ -73,6 +73,7 @@ namespace CarDrivingDataManagement.Utils
                 {
                     i++;
                 }
+
                 currentBlock.RecordsArray.Records[i] = new Record<T>(data);
                 WriteBlock(currentBlock);
                 return (NextBlockID - 1) * RecordsPerBlockCount + i;
@@ -84,6 +85,12 @@ namespace CarDrivingDataManagement.Utils
             int blockIndex = address / RecordsPerBlockCount;
             int recordIndex = address - blockIndex * RecordsPerBlockCount;
             return ReadBlock(blockIndex).RecordsArray.Records[recordIndex].Data;
+        }
+
+        public Block<T> FindBlock(int address)
+        {
+            int blockIndex = address / RecordsPerBlockCount;
+            return ReadBlock(blockIndex);
         }
 
         public void WriteBlock(Block<T> block)
@@ -131,21 +138,27 @@ namespace CarDrivingDataManagement.Utils
             }
             int blockSize = GetRecordSize() * RecordsPerBlockCount;
             Block<T> node = new Block<T>(id, RecordsPerBlockCount);
-            BinaryReader.BaseStream.Seek(blockSize * id, SeekOrigin.Begin);
-            byte[] bytes = BinaryReader.ReadBytes(blockSize);
-
-            
-            for (int i = 0; i < RecordsPerBlockCount; i++)
+                BinaryReader.BaseStream.Seek(blockSize * id, SeekOrigin.Begin);
+                byte[] bytes = BinaryReader.ReadBytes(blockSize);
+            if(bytes.Length == 0)
             {
-                node.RecordsArray.Records[i] =
-                    new Record<T>(bytes.Skip(i * GetRecordSize())
-                    .Take(GetRecordSize()).ToArray());
-                if (node.RecordsArray.Records[i].Data.IsNull() || !node.RecordsArray.Records[i].Used)
-                {
-                    node.RecordsArray.Records[i] = null;
-                }
+                return null;
             }
-            return node;
+
+                for (int i = 0; i < RecordsPerBlockCount; i++)
+                {
+                node.RecordsArray.Records[i] =
+                        new Record<T>(bytes.Skip(i * GetRecordSize())
+                        .Take(GetRecordSize()).ToArray());
+                    if (node.RecordsArray.Records[i].Data == null ||
+                    node.RecordsArray.Records[i].Data.IsNull() || !node.RecordsArray.Records[i].Used)
+                    {
+                        node.RecordsArray.Records[i] = null;
+                    }
+                }
+
+                return node;
+            
         }
         
         public void OpenFileInteraction()
